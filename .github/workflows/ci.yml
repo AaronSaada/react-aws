@@ -1,0 +1,40 @@
+name: Déployer l'app sur AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Update system packages
+        run: sudo apt-get update -y
+
+      - name: Install OpenSSH Client
+        run: sudo apt-get install -y openssh-client
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | base64 --decode > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Connect to AWS and deploy
+        run: |
+          ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.SSH_HOST }} << 'EOF'
+            cd /home/ubuntu/react-app
+            git pull origin main
+            npm install
+            npm run build
+            pm2 restart my-react-app || pm2 start npm --name "my-react-app" -- run start
+          EOF
+
+      - name: Clean up SSH Key
+        run: rm -rf ~/.ssh

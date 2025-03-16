@@ -26,16 +26,16 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Connect to AWS and deploy
+      - name: Deploy to EC2 with Docker
         run: |
-          echo "Connexion SSH à AWS EC2..."
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@${{ secrets.SSH_HOST }} << EOF
-            export WORK_DIR="${{ secrets.WORK_DIR }}"
-            cd \$WORK_DIR
-            git pull origin main
-            npm install
-            npm run build
-            pm2 restart react || pm2 start npm --name "react" -- run start
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} <<EOF
+            cd ${{ secrets.WORK_DIR }}
+            git checkout ${{ secrets.MAIN_BRANCH }}
+            git pull
+            docker-compose -f docker-compose.yml down
+            docker system prune -af
+            docker image prune -af
+            docker-compose up -d --build
           EOF
 
       - name: Clean up SSH Key

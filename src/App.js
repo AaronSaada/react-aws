@@ -2,7 +2,7 @@ function App() {
   return (
     <div classNawme="App">
       <h1>Hello World</h1>
-      <p></p>
+      <p>Hello</p>
     </div>
   );
 }

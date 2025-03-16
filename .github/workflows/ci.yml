@@ -6,7 +6,26 @@ on:
       - main
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npm test
+
   deploy:
+    needs: test  # Le déploiement ne s’exécute que si les tests passent
     runs-on: ubuntu-latest
 
     steps:
@@ -25,6 +44,12 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" | base64 --decode > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Backup Database
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} <<EOF
+            docker exec db-container pg_dump -U postgres mydatabase > ~/backup_$(date +%F_%T).sql
+          EOF
 
       - name: Deploy to EC2 with Docker
         run: |

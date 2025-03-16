@@ -1,4 +1,4 @@
-version: "3"
+version: "3.8"
 
 services:
 
@@ -7,8 +7,52 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: react-app
+    restart: always
     ports:
       - "5000:5000"
     volumes:
-       - ./src:/app/src
-       - ./public:/app/public
+      - ./src:/app/src
+      - ./public:/app/public
+    environment:
+      - DATABASE_URL=postgres://postgres:secret@db:5432/mydatabase
+    depends_on:
+      - db
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.react.rule=Host(`app.mondomaine.com`)"
+      - "traefik.http.routers.react.entrypoints=websecure"
+      - "traefik.http.routers.react.tls.certresolver=letsencrypt"
+
+  db:
+    image: postgres:15
+    container_name: db-container
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: mydatabase
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  traefik:
+    image: traefik:v2.9
+    container_name: traefik
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik.yml:/etc/traefik/traefik.yml
+      - ./acme.json:/acme.json
+    environment:
+      - CF_API_EMAIL=${CLOUDFLARE_EMAIL}
+      - CF_API_KEY=${CLOUDFLARE_API_KEY}
+    labels:
+      - "traefik.http.routers.traefik.rule=Host(`traefik.mondomaine.com`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+
+volumes:
+  db_data:
